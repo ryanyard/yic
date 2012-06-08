@@ -5,20 +5,19 @@
 #
 #       When             Who            What
 #       ====             ===            ====
-#       23-Mar-2011      Ryan Yard      IDMAPD setup Post-install script
+#       23-Mar-2011      Ryan Yard      IDMAPD setup Post-install Script
 #
 #==============================================================================
 export PATH=$PATH:/bin:/usr/bin:/sbin:/usr/sbin
 if [ ! -f /etc/env-custom.conf ]; then
-        echo "No /etc/bac.conf found.   That's needed to run $0"
+        echo "No /etc/env-custom.conf found.   That's needed to run $0"
         exit 1
 fi
 . /etc/env-custom.conf
 
 echo ---------------------------------------------
-echo IDMAPD setup Post-install script
+echo IDMAPD setup Post-install Script
 echo ---------------------------------------------
-
 
 sed -i -r -e 's|^#?Domain.*|Domain = '$DOMAIN'|g' \
           -e 's|^Nobody-User.*|Nobody-User = root|g' \
@@ -26,7 +25,6 @@ sed -i -r -e 's|^#?Domain.*|Domain = '$DOMAIN'|g' \
           /etc/idmapd.conf
 
 # make sure rpcidmapd runs at startup
-
 chkconfig rpcidmapd on > /dev/null 2>&1
 
 # check if rpcidmapd is running
