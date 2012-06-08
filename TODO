@@ -1,0 +1,5 @@
+Clean up logging
+Add snapshot, and fastmirror
+Add create directory functions
+Attach sample .rc, and .sh scripts
+Add versioning to script, and datafiles
