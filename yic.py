@@ -3,13 +3,14 @@ from urllib2 import urlopen, quote
 from BeautifulSoup import BeautifulSoup
 from subprocess import call
 from optparse import OptionParser
-import os, sys, logging
+import os, sys, time, logging
+import yic_snapshot
  
-url = "http://domain.com"
+url = "http://192.168.122.1"
 path = "/path/"
 build = "build"
 tmp_path = "/tmp/yic"
-log_path = "/var/log/"
+log_path = "/var/log/yic/"
 script_prefix = "/scripts/"
 datafile_prefix = "/datafiles/"
 datafile = {}
@@ -33,16 +34,19 @@ def logit():
   return
 
 def snapshot():
-  # get the snapshot plugin code, module?
-  return
+  snapshot_tag = "yic_" + time.strftime("%Y%m%d%H%M%S")
+  volumes = yic_snapshot.get_volumes()
+  for volume in volumes:
+    yic_snapshot.create_lvm_snapshot(snapshot_tag, volume)
+  return 
 
-def listFile(prefix, file):
-  page = urlopen(url + path + build + prefix)
+def listFile():
+  page = urlopen(url + path + build + datafile_prefix)
   soup = BeautifulSoup(page)
   try:
     for item in soup.findAll('a', href=True):
       this_href = item["href"]
-      if this_href.endswith(file):
+      if this_href.endswith(".rc"):
         remote_file = quote(this_href, safe=":/")
         print remote_file
   except(), e:
@@ -51,6 +55,8 @@ def listFile(prefix, file):
 def getFile(prefix, file):
   page = urlopen(url + path + build + prefix)
   soup = BeautifulSoup(page)
+  if not os.path.exists(tmp_path + prefix):
+    os.makedirs(tmp_path + prefix)
   try:
     for item in soup.findAll('a', href=True):
       this_href = item["href"]
@@ -177,8 +183,9 @@ def main():
   parser.add_option("-f", "--file", type="string", dest="filename",
                     help="datafile name", metavar="FILE")
   (options, args) = parser.parse_args()
-
+  #snapshot()
   processDataFiles(script_prefix, sys.argv[2])
+  #listFile()
  
 if __name__ == '__main__':
     main()
