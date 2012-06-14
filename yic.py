@@ -5,8 +5,8 @@ from subprocess import call
 from optparse import OptionParser
 import os, sys, time, logging
 import yic_snapshot
+import yic_fastmirror
  
-url = "http://192.168.122.1"
 path = "/path/"
 build = "build"
 tmp_path = "/tmp/yic"
@@ -14,6 +14,8 @@ log_path = "/var/log/yic/"
 script_prefix = "/scripts/"
 datafile_prefix = "/datafiles/"
 datafile = {}
+#mirrorlist = ["http://mirror.overthewire.com.au/pub/epel/", "http://epel.mirrors.arminco.com/", "http://mirror.iprimus.com.au/epel/"]
+mirrorlist = ["http://localhost/", "http://localhost/"]
 
 logging.basicConfig(filename=log_path + 'yic.log',level=logging.DEBUG) 
 
@@ -22,8 +24,9 @@ def cleanup():
   return
 
 def getFastestMirror():
-  # need to get code from plugin, module?
-  return
+  global url
+  url = yic_fastmirror.FastestMirror(mirrorlist).get_mirrorlist()[0]
+  return url
 
 def getYumURLs():
   # parse the mirror list
@@ -184,6 +187,7 @@ def main():
                     help="datafile name", metavar="FILE")
   (options, args) = parser.parse_args()
   #snapshot()
+  getFastestMirror()
   processDataFiles(script_prefix, sys.argv[2])
   #listFile()
  
