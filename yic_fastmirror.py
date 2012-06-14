@@ -11,7 +11,7 @@
 # GNU General Public License for more details.
 #
 # (C) Copyright 2005 Luke Macken <lmacken@redhat.com>
-#
+# Modified 2012 by Ryan Yard <ryard@redhat.com>
 
 import os
 import sys
@@ -53,7 +53,7 @@ def clean():
 # Get the hostname from a url, stripping away any usernames/passwords
 host = lambda mirror: mirror.split('/')[2].split('@')[-1]
 
-def _can_write_results(fname):
+def can_write_results(fname):
     if not os.path.exists(fname):
         try:
             hostfile = file(hostfilepath, 'w')
@@ -137,7 +137,6 @@ def reposetup():
     if not loadcache:
         write_timedhosts()
 
-
 def read_timedhosts():
     global timedhosts
     try:
@@ -187,7 +186,7 @@ class FastestMirror:
             self._results_lock.release()
 
     def get_mirrorlist(self):
-        self._poll_mirrors()
+        self.poll_mirrors()
         if not downgrade_ftp:
             mirrors = [(v, k) for k, v in self.results.items()]
         else:
@@ -197,7 +196,7 @@ class FastestMirror:
         mirrors.sort()
         return [x[-1] for x in mirrors]
 
-    def _poll_mirrors(self):
+    def poll_mirrors(self):
         global maxthreads
         for mirror in self.mirrorlist:
             if len(self.threads) > maxthreads:
@@ -214,9 +213,9 @@ class FastestMirror:
                 result = timedhosts[mhost]
                 if verbose:
                     print "%s already timed: %s" % (mhost, result)
-                self._add_result(mirror, mhost, result)
+                self.add_result(mirror, mhost, result)
             elif mhost in ("127.0.0.1", "::1", "localhost", prefer):
-                self._add_result(mirror, mhost, 0)
+                self.add_result(mirror, mhost, 0)
             else:
                 # No cached info. so spawn a thread and find the info. out
                 self._init_lock()
@@ -228,7 +227,7 @@ class FastestMirror:
                 self.threads[0].join()
             del self.threads[0]
 
-    def _add_result(self, mirror, host, time):
+    def add_result(self, mirror, host, time):
         global timedhosts
         self._acquire_lock()
         if verbose: print " * %s : %f secs" % (host, time)
@@ -274,11 +273,11 @@ class PollThread(threading.Thread):
                     sock.connect((self.host, self.port))
                     result = time.time() - time_before
                     sock.close()
-            self.parent._add_result(self.mirror, self.host, result)
+            self.parent.add_result(self.mirror, self.host, result)
         except:
             if verbose:
                 print " * %s : dead" % self.host
-            self.parent._add_result(self.mirror, self.host, 99999999999)
+            self.parent.add_result(self.mirror, self.host, 99999999999)
 
 def main():
     global verbose
@@ -289,7 +288,7 @@ def main():
         sys.exit(-1)
 
     mirrorlist = sys.argv[1:]
-    print "Result: " + str(FastestMirror(mirrorlist).get_mirrorlist())
+    print "Result: " + str(FastestMirror(mirrorlist).get_mirrorlist()[0])
 
 if __name__ == '__main__':
     main()
