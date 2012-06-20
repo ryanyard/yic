@@ -13,26 +13,26 @@
 # written by Ed Brand
 #            Ryan Yard <ryard@redhat.com>
 
-
 from urllib2 import urlopen, quote
 from BeautifulSoup import BeautifulSoup
 from subprocess import call
 from optparse import OptionParser
-import os, sys, time, logging
-import yic_snapshot
-import yic_fastmirror
+import os, sys, time, logging, inspect
+import yic_snapshot, yic_fastmirror
  
 path = "/path/"
 build = "build"
 tmp_path = "/tmp/yic"
-log_path = "/var/log/yic/"
 script_prefix = "/scripts/"
 datafile_prefix = "/datafiles/"
 datafile = {}
-#mirrorlist = ["http://mirror.overthewire.com.au/pub/epel/", "http://epel.mirrors.arminco.com/", "http://mirror.iprimus.com.au/epel/"]
+snapshot_file = "/root/.snapshot"
 mirrorlist = ["http://localhost/", "http://localhost/"]
+#mirrorlist = ["http://mirror.overthewire.com.au/pub/epel/", "http://epel.mirrors.arminco.com/", "http://mirror.iprimus.com.au/epel/"]
 
-logging.basicConfig(filename=log_path + 'yic.log',level=logging.DEBUG) 
+log_file = "/var/log/yic/yic.log"
+log_format = '%(asctime)s - %(name)s:%(levelname)s:%(message)s'
+logging.basicConfig(format=log_format, filename=log_file, level=logging.DEBUG) 
 
 def cleanup():
   # need to work on this
@@ -41,18 +41,26 @@ def cleanup():
 def getFastestMirror():
   global url
   url = yic_fastmirror.FastestMirror(mirrorlist).get_mirrorlist()[0]
+  print "Result: " + url
   return url
 
-def logit():
-  # clean up logging routine
-  return
+def funcname():
+  return inspect.stack()[1][3]
 
-def snapshot():
-  snapshot_tag = "yic_" + time.strftime("%Y%m%d%H%M%S")
-  volumes = yic_snapshot.get_volumes()
-  for volume in volumes:
-    yic_snapshot.create_lvm_snapshot(snapshot_tag, volume)
-  return 
+def logit(function, log):
+  logging.info('======================================================================')
+  logging.info('Processing %s : %s', function, log)
+  logging.info('======================================================================')
+
+def snapShot():
+  if os.path.exists(snapshot_file):
+    snapshot_tag = "yic_" + time.strftime("%Y%m%d%H%M%S")
+    volumes = yic_snapshot.get_volumes()
+    for volume in volumes:
+      yic_snapshot.create_lvm_snapshot(snapshot_tag, volume)
+    return 
+  else:
+    logit(funcname(), "No Snapshot")
 
 def listFile():
   page = urlopen(url + path + build + datafile_prefix)
@@ -64,7 +72,7 @@ def listFile():
         remote_file = quote(this_href, safe=":/")
         print remote_file
   except(), e:
-    logging.debug('yic.listFile: Unable to find valid yum baserepo URLs')
+    logging.debug('%s: Unable to find valid yum baserepo URLs', funcname())
  
 def getFile(prefix, file):
   page = urlopen(url + path + build + prefix)
@@ -81,12 +89,10 @@ def getFile(prefix, file):
         with open(tmp_path + prefix + local_file, "w") as lfile:
           lfile.write(rfile.read())
   except(), e:
-    logging.debug('yic.getFile: Unable to find valid yum baserepo URLs')
+    logging.debug('%s: Unable to find valid yum baserepo URLs', funcname())
  
 def processDataFile(prefix, file):
-  logging.info('======================================================================')
-  logging.info('Processing DATAFILE: %s', file)
-  logging.info('======================================================================')
+  logit(funcname(), file)
   try:
     with open(tmp_path + datafile_prefix + file) as rcfile:
       for line in rcfile:
@@ -96,7 +102,7 @@ def processDataFile(prefix, file):
     install()
     uninstall()
   except(), e:
-     logging.debug('yic.processDataFile: Failure')
+     logging.debug('%s: Failure', funcname())
  
 def install():
   processPreScripts(script_prefix)
@@ -115,43 +121,33 @@ def processDataFiles(prefix, file):
     for rc in datafile['DATAFILES'].split(' '):
       getFile (datafile_prefix, rc)
       processDataFile(prefix, rc)
-      logging.info('======================================================================')
-      logging.info('Processing PRESCRIPTS: %s', rc)
-      logging.info('======================================================================')
+      logit(funcname(), file)
  
 def processPreScripts(prefix):
   if datafile['PRE_INSTALL_SCRIPTS'].endswith(".sh"):
     for sh in datafile['PRE_INSTALL_SCRIPTS'].split(' '):
       getFile(prefix, sh)
       preInstallScript(sh)
-      logging.info('======================================================================')
-      logging.info('Processing PRESCRIPTS: %s', sh)
-      logging.info('======================================================================')
+      logit(funcname(), sh)
     
 def processPreUnScripts(prefix):
   if datafile['PRE_UNINSTALL_SCRIPTS'].endswith(".sh"):
     for sh in datafile['PRE_UNINSTALL_SCRIPTS'].split(' '):
       getFile(prefix, sh)
-      logging.info('======================================================================')
-      logging.info('Processing PREUNSCRIPTS: %s', sh)
-      logging.info('======================================================================')
+      logit(funcname(), sh)
  
 def processPostScripts(prefix):
   if datafile['POST_INSTALL_SCRIPTS'].endswith(".sh"):
     for sh in datafile['POST_INSTALL_SCRIPTS'].split(' '):
       getFile(prefix, sh)
       postInstallScript(sh)
-      logging.info('======================================================================')
-      logging.info('Processing POSTSCRIPTS: %s', sh)
-      logging.info('======================================================================')
+      logit(funcname(), sh)
  
 def processPostUnScripts(prefix):
   if datafile['POST_UNINSTALL_SCRIPTS'].endswith(".sh"):
     for sh in datafile['POST_UNINSTALL_SCRIPTS'].split(' '):
       getFile(prefix, sh)
-      logging.info('======================================================================')
-      logging.info('Processing POSTUNSCRIPTS: %s', sh)
-      logging.info('======================================================================')
+      logit(funcname(), sh)
  
 def preInstallScript(file):
   script = tmp_path + script_prefix + file
@@ -161,7 +157,7 @@ def preInstallScript(file):
     call(chmod, shell=True)
     call(sudo_script, shell=True)
   except(), e:
-    logging.debug('yic.preInstallScript: Failure')
+    logging.debug('%s: Failure', funcname())
  
 def postInstallScript(file):
   script = tmp_path + script_prefix + file
@@ -171,7 +167,7 @@ def postInstallScript(file):
     call(chmod, shell=True)
     call(sudo_script, shell=True)
   except(), e:
-    logging.debug('yic.postInstallScript: Failure') 
+    logging.debug('%s: Failure', funcname()) 
 
 def installRPMs():
   if datafile['RPMLIST']:
@@ -180,7 +176,7 @@ def installRPMs():
         yum = "/usr/bin/sudo /usr/bin/yum -y install " + rpm
         call(yum, shell=True)
     except(), e:
-      logging.debug('yic.installRPMs: Failure')
+      logging.debug('%s: Failure', funcname())
 
 def removeRPMs():
   if datafile['RPMLIST']:
@@ -189,7 +185,7 @@ def removeRPMs():
         yum = "/usr/bin/sudo /usr/bin/yum -y remove " + rpm
         call(yum, shell=True)
     except(), e:
-      logging.debug('yic.removeRPMs: Failure')
+      logging.debug('%s: Failure', funcname())
  
 def main():
   parser = OptionParser(usage="usage: %prog [options] filename",
@@ -197,7 +193,7 @@ def main():
   parser.add_option("-f", "--file", type="string", dest="filename",
                     help="datafile name", metavar="FILE")
   (options, args) = parser.parse_args()
-  #snapshot()
+  snapShot()
   getFastestMirror()
   processDataFiles(script_prefix, sys.argv[2])
  
