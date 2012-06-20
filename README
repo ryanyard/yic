@@ -2,8 +2,11 @@ A general purpose post-install tool for linux
 
 usage: ./yic.py -f CORE.rc
 
-you need to run a webserver to server the following paths:
+you need to run a webserver to serve the following paths:
 
 mkdir -p
 /var/www/html/path/build/scripts
 /var/www/html/path/build/datafiles
+
+Create a log directory:
+mkdir /var/log/yic; touch /var/log/yic/yic.log
