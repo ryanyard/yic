@@ -1,5 +1,9 @@
-Clean up logging
-Add snapshot, and fastmirror
-Add create directory functions
-Attach sample .rc, and .sh scripts
+Need to add inline documentation
 Add versioning to script, and datafiles
+Implement yum API calls rather then spawning a cmdshell
+
+Clean up logging -done 
+Add snapshot, and fastmirror -done
+Add create directory functions -done 
+Attach sample .rc, and .sh scripts -done
+
