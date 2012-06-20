@@ -1,0 +1,9 @@
+A general purpose post-install tool for linux 
+
+usage: ./yic.py -f CORE.rc
+
+you need to run a webserver to server the following paths:
+
+mkdir -p
+/var/www/html/path/build/scripts
+/var/www/html/path/build/datafiles
