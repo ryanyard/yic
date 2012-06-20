@@ -19,6 +19,7 @@ from subprocess import call
 from optparse import OptionParser
 import os, sys, time, logging, inspect
 import yic_snapshot, yic_fastmirror
+import yum
  
 path = "/path/"
 build = "build"
@@ -33,6 +34,23 @@ mirrorlist = ["http://localhost/", "http://localhost/"]
 log_file = "/var/log/yic/yic.log"
 log_format = '%(asctime)s - %(name)s:%(levelname)s:%(message)s'
 logging.basicConfig(format=log_format, filename=log_file, level=logging.DEBUG) 
+
+#http://yum.baseurl.org/download/docs/yum-api/3.2.27/
+
+class Test(yum.YumBase):
+  def __init__(self):
+    yum.YumBase.__init__(self)
+    searchlist = ['name']
+    args = ["dovecot", "k3b"]
+    matching = self.searchGenerator(searchlist, args)
+    for (po, matched_value) in matching:
+      if po.name == "dovecot":
+        self.install(po)
+      elif po.name == "k3b":
+        self.delete(po)
+      # build and process the batch transaction
+    self.buildTransaction()
+    self.processTransaction()
 
 def cleanup():
   # need to work on this
@@ -62,7 +80,8 @@ def snapShot():
   else:
     logit(funcname(), "No Snapshot")
 
-def listFile():
+def listFile(option, opt_str, value, parser):
+  getFastestMirror()
   page = urlopen(url + path + build + datafile_prefix)
   soup = BeautifulSoup(page)
   try:
@@ -75,6 +94,7 @@ def listFile():
     logging.debug('%s: Unable to find valid yum baserepo URLs', funcname())
  
 def getFile(prefix, file):
+  getFastestMirror()
   page = urlopen(url + path + build + prefix)
   soup = BeautifulSoup(page)
   if not os.path.exists(tmp_path + prefix):
@@ -188,14 +208,31 @@ def removeRPMs():
       logging.debug('%s: Failure', funcname())
  
 def main():
-  parser = OptionParser(usage="usage: %prog [options] filename",
-                        version="%prog 1.0")
+  usage = "usage: %prog [options] filename"
+  parser = OptionParser(usage=usage)
   parser.add_option("-f", "--file", type="string", dest="filename",
                     help="datafile name", metavar="FILE")
-  (options, args) = parser.parse_args()
-  snapShot()
-  getFastestMirror()
-  processDataFiles(script_prefix, sys.argv[2])
+  parser.add_option("-l", "--list", action="callback", callback=listFile,
+                    help="list files")
+  parser.add_option("-g", "--get", type="string", dest="filename",
+                    help="get files", metavar="FILE",
+                    action="callback", callback=getFile)
+  parser.add_option("-v", "--verbose",
+                    action="store_true", dest="verbose")
+  parser.add_option("-q", "--quiet",
+                    action="store_false", dest="verbose")
+
+  try:
+    (options, args) = parser.parse_args()
+    if options.filename is None:
+      parser.print_help()
+      exit(-1)
+    snapShot()
+    #getFastestMirror()
+    processDataFiles(script_prefix, sys.argv[2])
+  except(), e:
+    print "Error: %s" %e
+    sys.exit(1)
  
 if __name__ == '__main__':
     main()
