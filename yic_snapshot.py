@@ -82,17 +82,17 @@ def get_volumes():
                        "mntpnt" : mntpnt,
                        "fstype" : fstype }
 
-            if mntpnt in excluded_mntpnts:
-                continue
+            #if mntpnt in excluded_mntpnts:
+            #   continue
 
-            if not rest.find("bind") == -1:
-                continue
+            #if not rest.find("bind") == -1:
+            #    continue
 
-            if not device.find("/") == 0:
-                continue
+            #if not device.find("/") == 0:
+            #    continue
 
-            if not inspect_volume_lvm(volume):
-                continue
+            #if not inspect_volume_lvm(volume):
+            #    continue
 
             volumes.append(volume)
         mtabfile.close()
@@ -115,8 +115,8 @@ def create_lvm_snapshot(snapshot_tag, volume):
     
     snap_device = device + "_" + snapshot_tag
     snap_lvname = snap_device.split('/')[3]
-    print snap_device
-    print snap_lvname
+    #print snap_device
+    #print snap_lvname
 
     print "fs-snapshot: snapshotting %s (%s): %s" % (mntpnt, device, snap_lvname)
 
@@ -140,6 +140,7 @@ def create_lvm_snapshot(snapshot_tag, volume):
 def main():
   snapshot_tag = "yic_" + time.strftime("%Y%m%d%H%M%S")
   volumes = get_volumes()
+  #print volumes
   for volume in volumes:
     create_lvm_snapshot(snapshot_tag, volume)
 

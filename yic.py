@@ -19,7 +19,9 @@ from subprocess import call
 from optparse import OptionParser
 import os, sys, time, logging, inspect
 import yic_snapshot, yic_fastmirror
-import yum
+import sys
+sys.path.append("/usr/share/yum-cli")
+import cli, yum
  
 path = "/path/"
 build = "build"
@@ -27,7 +29,7 @@ tmp_path = "/tmp/yic"
 script_prefix = "/scripts/"
 datafile_prefix = "/datafiles/"
 datafile = {}
-snapshot_file = "/root/.snapshot"
+snapshot_file = "/.snapshot"
 mirrorlist = ["http://localhost/", "http://localhost/"]
 #mirrorlist = ["http://mirror.overthewire.com.au/pub/epel/", "http://epel.mirrors.arminco.com/", "http://mirror.iprimus.com.au/epel/"]
 
@@ -37,20 +39,29 @@ logging.basicConfig(format=log_format, filename=log_file, level=logging.DEBUG)
 
 #http://yum.baseurl.org/download/docs/yum-api/3.2.27/
 
-class Test(yum.YumBase):
-  def __init__(self):
-    yum.YumBase.__init__(self)
-    searchlist = ['name']
-    args = ["dovecot", "k3b"]
-    matching = self.searchGenerator(searchlist, args)
-    for (po, matched_value) in matching:
-      if po.name == "dovecot":
-        self.install(po)
-      elif po.name == "k3b":
-        self.delete(po)
-      # build and process the batch transaction
-    self.buildTransaction()
-    self.processTransaction()
+def yumInstall(pkgname):
+#  yb = yum.YumBase()
+#  yb.install(name=pkgname)
+#  yb.setCacheDir()
+#  yb.resolveDeps()
+#  yb.buildTransaction()
+#  yb.processTransaction()
+  ybc = cli.YumBaseCli()
+  ybc.doConfigSetup()
+  ybc.doTsSetup()
+  ybc.doRpmDBSetup()
+  ybc.installPkgs([pkgname])
+  ybc.buildTransaction()
+#  ybc.conf.setConfigOption('assumeyes',True)
+  ybc.doTransaction()
+
+def yumRemove(pkgname):
+  yb = yum.YumBase()
+  yb.remove(name=pkgname)
+  yb.setCacheDir()
+  yb.resolveDeps()
+  yb.buildTransaction()
+  yb.processTransaction()
 
 def cleanup():
   # need to work on this
@@ -59,7 +70,7 @@ def cleanup():
 def getFastestMirror():
   global url
   url = yic_fastmirror.FastestMirror(mirrorlist).get_mirrorlist()[0]
-  print "Result: " + url
+  #print "Result: " + url
   return url
 
 def funcname():
@@ -94,20 +105,20 @@ def listFile(option, opt_str, value, parser):
     logging.debug('%s: Unable to find valid yum baserepo URLs', funcname())
  
 def getFile(prefix, file):
-  getFastestMirror()
-  page = urlopen(url + path + build + prefix)
-  soup = BeautifulSoup(page)
-  if not os.path.exists(tmp_path + prefix):
-    os.makedirs(tmp_path + prefix)
   try:
-    for item in soup.findAll('a', href=True):
-      this_href = item["href"]
-      if this_href.endswith(file):
-        local_file = this_href.split("/")[-1]
-        remote_file = quote(this_href, safe=":/")
-        rfile = urlopen(url + path + build + prefix + remote_file)
-        with open(tmp_path + prefix + local_file, "w") as lfile:
-          lfile.write(rfile.read())
+    getFastestMirror()
+    page = urlopen(url + path + build + prefix)
+    soup = BeautifulSoup(page)
+    if not os.path.exists(tmp_path + prefix):
+      os.makedirs(tmp_path + prefix)
+      for item in soup.findAll('a', href=True):
+        this_href = item["href"]
+        if this_href.endswith(file):
+          local_file = this_href.split("/")[-1]
+          remote_file = quote(this_href, safe=":/")
+          rfile = urlopen(url + path + build + prefix + remote_file)
+          with open(tmp_path + prefix + local_file, "w") as lfile:
+            lfile.write(rfile.read())
   except(), e:
     logging.debug('%s: Unable to find valid yum baserepo URLs', funcname())
  
@@ -120,7 +131,7 @@ def processDataFile(prefix, file):
         datafile[(key)] = val
     rcfile.close
     install()
-    uninstall()
+    #uninstall()
   except(), e:
      logging.debug('%s: Failure', funcname())
  
@@ -135,13 +146,16 @@ def uninstall():
   processPostUnScripts(script_prefix)
 
 def processDataFiles(prefix, file):
-  getFile (datafile_prefix, file)
-  processDataFile(prefix, file)
-  if datafile['DATAFILES'].endswith(".rc"):
-    for rc in datafile['DATAFILES'].split(' '):
-      getFile (datafile_prefix, rc)
-      processDataFile(prefix, rc)
-      logit(funcname(), file)
+  try:
+    getFile (datafile_prefix, file)
+    processDataFile(prefix, file)
+    if datafile['DATAFILES'].endswith(".rc"):
+      for rc in datafile['DATAFILES'].split(' '):
+        getFile (datafile_prefix, rc)
+        processDataFile(prefix, rc)
+        logit(funcname(), file)
+  except(), e:
+    logging.debug('%s: Unable to find valid yum baserepo URLs', funcname())
  
 def processPreScripts(prefix):
   if datafile['PRE_INSTALL_SCRIPTS'].endswith(".sh"):
@@ -193,8 +207,7 @@ def installRPMs():
   if datafile['RPMLIST']:
     try:
       for rpm in datafile['RPMLIST'].split(' '):
-        yum = "/usr/bin/sudo /usr/bin/yum -y install " + rpm
-        call(yum, shell=True)
+        yumInstall(rpm)
     except(), e:
       logging.debug('%s: Failure', funcname())
 
@@ -202,8 +215,7 @@ def removeRPMs():
   if datafile['RPMLIST']:
     try:
       for rpm in datafile['RPMLIST'].split(' '):
-        yum = "/usr/bin/sudo /usr/bin/yum -y remove " + rpm
-        call(yum, shell=True)
+        yumRemove(rpm)
     except(), e:
       logging.debug('%s: Failure', funcname())
  
@@ -228,7 +240,6 @@ def main():
       parser.print_help()
       exit(-1)
     snapShot()
-    #getFastestMirror()
     processDataFiles(script_prefix, sys.argv[2])
   except(), e:
     print "Error: %s" %e
