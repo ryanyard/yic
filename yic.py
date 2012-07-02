@@ -40,28 +40,22 @@ logging.basicConfig(format=log_format, filename=log_file, level=logging.DEBUG)
 #http://yum.baseurl.org/download/docs/yum-api/3.2.27/
 
 def yumInstall(pkgname):
-#  yb = yum.YumBase()
-#  yb.install(name=pkgname)
-#  yb.setCacheDir()
-#  yb.resolveDeps()
-#  yb.buildTransaction()
-#  yb.processTransaction()
   ybc = cli.YumBaseCli()
   ybc.doConfigSetup()
   ybc.doTsSetup()
   ybc.doRpmDBSetup()
   ybc.installPkgs([pkgname])
   ybc.buildTransaction()
-#  ybc.conf.setConfigOption('assumeyes',True)
   ybc.doTransaction()
 
 def yumRemove(pkgname):
-  yb = yum.YumBase()
-  yb.remove(name=pkgname)
-  yb.setCacheDir()
-  yb.resolveDeps()
-  yb.buildTransaction()
-  yb.processTransaction()
+  ybc = cli.YumBaseCli()
+  ybc.doConfigSetup()
+  ybc.doTsSetup()
+  ybc.doRpmDBSetup()
+  ybc.removePkgs([pkgname])
+  ybc.buildTransaction()
+  ybc.doTransaction()
 
 def cleanup():
   # need to work on this
