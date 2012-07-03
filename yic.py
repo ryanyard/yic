@@ -59,7 +59,7 @@ def cleanup():
 def getFastestMirror():
   global url
   url = yic_fastmirror.FastestMirror(mirrorlist).get_mirrorlist()[0]
-  print "Result: " + url
+  #print "Result: " + url
   return url
 
 def funcname():
