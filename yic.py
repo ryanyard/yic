@@ -37,14 +37,13 @@ log_file = "/var/log/yic/yic.log"
 log_format = '%(asctime)s - %(name)s:%(levelname)s:%(message)s'
 logging.basicConfig(format=log_format, filename=log_file, level=logging.DEBUG) 
 
-#http://yum.baseurl.org/download/docs/yum-api/3.2.27/
 
 def yumInstall(pkgname):
   ybc = cli.YumBaseCli()
   ybc.doConfigSetup()
   ybc.doTsSetup()
   ybc.doRpmDBSetup()
-  ybc.installPkgs([pkgname])
+  ybc.installPkgs(pkgname)
   ybc.buildTransaction()
   ybc.doTransaction()
 
@@ -53,7 +52,7 @@ def yumRemove(pkgname):
   ybc.doConfigSetup()
   ybc.doTsSetup()
   ybc.doRpmDBSetup()
-  ybc.removePkgs([pkgname])
+  ybc.removePkgs(pkgname)
   ybc.buildTransaction()
   ybc.doTransaction()
 
@@ -198,18 +197,22 @@ def postInstallScript(file):
     logging.debug('%s: Failure', funcname()) 
 
 def installRPMs():
+  pkglist = []
   if datafile['RPMLIST']:
     try:
       for rpm in datafile['RPMLIST'].split(' '):
-        yumInstall(rpm)
+        pkglist.append(rpm)
+      yumInstall(pkglist)
     except(), e:
       logging.debug('%s: Failure', funcname())
 
 def removeRPMs():
+  pkglist = []
   if datafile['RPMLIST']:
     try:
       for rpm in datafile['RPMLIST'].split(' '):
-        yumRemove(rpm)
+        pkglist.append(rpm)
+      yumRemove(pkglist)
     except(), e:
       logging.debug('%s: Failure', funcname())
  
