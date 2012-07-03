@@ -10,3 +10,5 @@ mkdir -p
 
 Create a log directory:
 mkdir /var/log/yic; touch /var/log/yic/yic.log
+
+Requires: python-BeautifulSoup
